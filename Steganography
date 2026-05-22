@@ -1,0 +1,64 @@
+import numpy as np
+from PIL import Image
+
+def text_to_bits(text):
+    bits = bin(int.from_bytes((text + '$$$').encode(), 'big'))[2:]
+    return bits.zfill(8 * ((len(bits) + 7) // 8))
+
+def bits_to_text(bits):
+    try:
+        n = int(bits, 2)
+        bytes_data = n.to_bytes((n.bit_length() + 7) // 8, 'big')
+        text = bytes_data.decode(errors='ignore')
+        if '$$$' in text:
+            return text.split('$$$')[0]
+    except:
+        pass
+    return None
+
+def main():
+    print("1. Encode (Hide Message)")
+    print("2. Decode (Extract Message)")
+    choice = input("Choice: ")
+
+    if choice == '1':
+        img_path = input("Enter Image Path: ").strip('"')
+        message = input("Enter Message: ")
+        output_path = "secret_image.png"
+
+        img = Image.open(img_path).convert('RGB')
+        data = np.array(img)
+        flattened = data.flatten()
+        
+        bits = text_to_bits(message)
+        
+        if len(bits) > len(flattened):
+            print("Error: Message too long!")
+            return
+
+        for i in range(len(bits)):
+            flattened[i] = (flattened[i] & 254) | int(bits[i])
+        
+        new_data = flattened.reshape(data.shape)
+        new_img = Image.fromarray(new_data.astype('uint8'), 'RGB')
+        new_img.save(output_path)
+        print(f"Saved as: {output_path}")
+
+    elif choice == '2':
+        img_path = input("Enter Image Path: ").strip('"')
+        img = Image.open(img_path).convert('RGB')
+        data = np.array(img)
+        flattened = data.flatten()
+        
+        bits = ""
+        for i in range(len(flattened)):
+            bits += str(flattened[i] & 1)
+            if len(bits) % 8 == 0:
+                result = bits_to_text(bits)
+                if result:
+                    print(f"Hidden Message: {result}")
+                    return
+        print("No message found.")
+
+if __name__ == "__main__":
+    main()
